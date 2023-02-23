@@ -124,10 +124,10 @@ def unzipFileWith7z(
         log_msg(f"File {file} does not exist")
         return
 
-    # check if is a .lib file, if yes skip
+    # check if is a .lib, .dll or .exe file, if yes skip
     # TODO: maybe a temporary solution, need to find a way to unzip .lib files
-    if file.endswith(".lib"):
-        log_msg(f"File {file} is a .lib file, skipping...")
+    if file.endswith(".lib") or file.endswith(".dll") or file.endswith(".exe"):
+        log_msg(f"File {file} is a .lib, .dll or .exe file, skipping...")
         return
 
     # check if the output directory already exists
@@ -274,7 +274,7 @@ def move_files_up(dir_path):
     """ remove all redundant directories and move all files up to the first level """
     contents = os.listdir(dir_path)
 
-    if len(contents) == 1:
+    if len(contents) == 1 and os.path.isdir(os.path.join(dir_path, contents[0])):
         subdir_path = os.path.join(dir_path, contents[0])
         if os.path.isdir(subdir_path):
             subdir_contents = os.listdir(subdir_path)
