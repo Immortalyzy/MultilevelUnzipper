@@ -30,8 +30,13 @@ setting_file_name = ".MultiLevelUnzipperSettings.json"
 # log function, its settings are controlled by global variables
 def log_msg(message, log_level=3):
     """ log the message to the console and optionally to a file, automatically add time stamp """
-    if log_level > settings["log_level"]:
-        time_message = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "-" + message
+    # log levels 1=tiny, 2=detailed, 3=normal, 4=important, 5=critical
+    if log_level >= settings["log_level"]:
+        time_message = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " "
+        for i in range(log_level):
+            time_message += "-"
+        time_message += " " + message
+
         if settings["write_to_file"]:
             with open(settings["log_file_name"], "a") as f:
                 f.write(time_message + "\n")
@@ -39,7 +44,6 @@ def log_msg(message, log_level=3):
             print(time_message)
 
 
-# find the 7z.exe
 def find7z():
     """ find the 7z.exe, return the path if found, otherwise return None """
     path = shutil.which("7z.exe")
@@ -139,17 +143,21 @@ def getPasswordList(dir):
     passwordList = [""]
     # check if the password file exists
     if not os.path.exists(os.path.join(dir, "passwords.txt")):
-        log_msg("passwords.txt not found")
-        return passwordList
-    with open(os.path.join(dir, "passwords.txt"), "r") as f:
-        for line in f:
-            passwordList.append(line.strip())
-
+        log_msg("passwords.txt not found", log_level=5)
+    else:
+        with open(os.path.join(dir, "passwords.txt"), "r") as f:
+            for line in f:
+                passwordList.append(line.strip())
     # print info message
-    log_msg(f"Found {len(passwordList):d} passwords")
+    log_msg(f"Found {len(passwordList):d} passwords in local passwords.txt", log_level=3)
 
-    # TODO: add global password, if the global password is not empty, add it to the list
     # global password is stored in ~/.passwords.txt
+    if os.path.exists(os.path.join(os.path.expanduser("~"), ".passwords.txt")):
+        with open(os.path.join(os.path.expanduser("~"), ".passwords.txt"), "r") as f:
+            for line in f:
+                passwordList.append(line.strip())
+
+    log_msg(f"Found {len(passwordList):d} passwords in total", log_level=4)
     return passwordList
 
 
@@ -163,22 +171,22 @@ def unzipFileWith7z(
 
     # check if the file exists
     if not os.path.exists(file):
-        log_msg(f"File {file} does not exist")
+        log_msg(f"File {file} does not exist", log_level=5)
         return False, lv
 
     # check if is a .lib, .dll or .exe file, if yes skip
     # TODO: maybe a temporary solution, need to find a way to unzip .lib files
     if file.endswith(".lib") or file.endswith(".dll") or file.endswith(".exe"):
-        log_msg(f"File {file} is a .lib, .dll or .exe file, skipping...")
+        log_msg(f"File {file} is a .lib, .dll or .exe file, skipping...", log_level=5)
         return False, lv
 
     # check if the output directory already exists
     if os.path.exists(f"{file}lv{lv:d}"):
         if autodeleteexisting:
-            log_msg(f"Output directory {file}lv{lv:d} already exists, deleting...")
+            log_msg(f"Output directory {file}lv{lv:d} already exists, deleting...", log_level=4)
             shutil.rmtree(f"{file}lv{lv:d}")
         else:
-            log_msg(f"Output directory {file}lv{lv:d} already exists, skipping...")
+            log_msg(f"Output directory {file}lv{lv:d} already exists, skipping...", log_level=4)
             return False, lv
 
     # unzip without password
@@ -187,7 +195,7 @@ def unzipFileWith7z(
     if not isinstance(file, os.PathLike) and not isinstance(file, str):
         raise TypeError(f"{file} must be a os.PathLike")
 
-    log_msg(f"Unzipping {file} without password...")
+    log_msg(f"Unzipping {file} without password...", log_level=2)
 
     result = subprocess.run(
         [z7path, "x", "-p", file, f"-o{file}lv{lv:d}"],
@@ -199,7 +207,9 @@ def unzipFileWith7z(
         result.returncode == 2
         and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1
     ):
-        log_msg(f"Archive {file} is password protected, start to unzip with passwords...")
+        log_msg(
+            f"Archive {file} is password protected, start to unzip with passwords...", log_level=2
+        )
         shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
         has_archive = True
         password_protected = True
@@ -209,17 +219,19 @@ def unzipFileWith7z(
         != -1
     ):
         if lv == 0:
-            log_msg(f'File "{file}" is not an archive')
+            log_msg(f'File "{file}" is not an archive', log_level=4)
         # remove the empty directory due to file is not an archive
         shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
         return False, lv
     if result.returncode == 0:
-        log_msg(f"Archive {file} is not password protected, unzipped to {file}lv{lv:d}")
+        log_msg(
+            f"Archive {file} is not password protected, unzipped to {file}lv{lv:d}", log_level=3
+        )
         right_pass_found = True
         has_archive = True
     elif password_protected is False:
-        log_msg(f"Unknown error when unzipping {file}")
-        log_msg(result.stderr.decode("utf-8", errors="replace"))
+        log_msg(f"Unknown error when unzipping {file}", log_level=5)
+        log_msg(result.stderr.decode("utf-8", errors="replace"), log_level=5)
         return False, lv
 
     # unzip with password
@@ -238,14 +250,17 @@ def unzipFileWith7z(
                 # remove empty files created due to wrong password
                 shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
             else:
-                log_msg(f"Correct password for {file} is {password}, unzipped to {file}lv{lv:d}")
+                log_msg(
+                    f"Correct password for {file} is {password}, unzipped to {file}lv{lv:d}",
+                    log_level=3,
+                )
                 has_archive = True
                 right_pass_found = True
                 break
 
     # no password found for the file
     if not right_pass_found:
-        log_msg(f"Cannot find the correct password for {file}")
+        log_msg(f"Cannot find the correct password for {file}", log_level=5)
         return False, lv
 
     if has_archive:
@@ -262,13 +277,11 @@ def unzipFileWith7z(
         if ".idata" in files:
             is_normal_dll += 1
         if is_normal_dll >= 2:
-            log_msg(f"File {file} is a normal file, skipping...")
+            log_msg(f"File {file} is a normal file, skipping...", log_level=5)
             shutil.rmtree(path=f"{file}lv{lv:d}", ignore_errors=True)
             return False, lv
         else:
-            log_msg(
-                f"File {file} is an archive, if auto delete is enabled, will delete the file after unzipping"
-            )
+            log_msg(f"File {file} just unzipped is an archive", log_level=3)
             if autodelete:
                 os.remove(file)
 
@@ -283,7 +296,11 @@ def unzipFileWith7z(
                 if file_.endswith(".exe"):
                     contains_exe = True
         if contains_dll and contains_exe:
-            log_msg(f"File {file} is a program, will not go to next level")
+            log_msg(f"File {file} is a program, will not go to next level", log_level=4)
+            log_msg(
+                "If you insist it is an archive, please change manually the extension of the file.",
+                log_level=4,
+            )
             return False, lv
 
         # criteria 2 : files just extracted contains at the same time .exe files and folders (it is a program without .dll files)
@@ -295,12 +312,16 @@ def unzipFileWith7z(
             contains_folder = True
 
         if contains_exe and contains_folder:
-            log_msg(f"Files unzipped from {file} is a program, will not go to next level")
+            log_msg(
+                f"Files unzipped from {file} is a program, will not go to next level", log_level=3
+            )
             return False, lv
 
         # other files without .dll or .exe files will automatically stop at the next level
 
-        log_msg(f"Archive {file} has been unzipped to {file}lv{lv:d}, going to next level")
+        log_msg(
+            f"Archive {file} has been unzipped to {file}lv{lv:d}, going to next level", log_level=3
+        )
         lv += 1
         # recursively unzip the files in the directory just created
         for root, dirs, files in os.walk(f"{file}lv{lv-1:d}"):
@@ -315,6 +336,7 @@ def unzipFileWith7z(
 def move_files_up(dir_path):
     """ remove all redundant directories and move all files up to the first level """
     contents = os.listdir(dir_path)
+    log_msg(f"Moving files up in {dir_path}", log_level=3)
 
     if len(contents) == 1 and os.path.isdir(os.path.join(dir_path, contents[0])):
         subdir_path = os.path.join(dir_path, contents[0])
@@ -386,11 +408,11 @@ def main(target):
                     finished_files_size += os.path.getsize(os.path.join(root, file)) / 1024 / 1024
                     if success:
                         log_msg(
-                            f"oooooooooooooooooooo Archive {file} has been unzipped to {file}lv{0:d}"
+                            f"vv Archive {file} has been unzipped to {file}lv{0:d}", log_level=5
                         )
                         successed += 1
                     else:
-                        log_msg(f"xxxxxxxxxxxxxxxxxxxx {file} cannot be unzipped.")
+                        log_msg(f"-- {file} cannot be unzipped.", log_level=5)
                         failed += 1
 
                     # estimate time remaining
@@ -419,12 +441,10 @@ def main(target):
                 finished_files += 1
                 finished_files_size += os.path.getsize(os.path.join(target, file)) / 1024 / 1024
                 if success:
-                    log_msg(
-                        f"oooooooooooooooooooo Archive {file} has been unzipped to {file}lv{0:d}"
-                    )
+                    log_msg(f"vv Archive {file} has been unzipped to {file}lv{0:d}", log_level=5)
                     successed += 1
                 else:
-                    log_msg(f"xxxxxxxxxxxxxxxxxxxx {file} cannot be unzipped.")
+                    log_msg(f"-- {file} cannot be unzipped.", log_level=5)
                     failed += 1
 
                 # estimate time remaining
