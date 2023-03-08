@@ -138,14 +138,14 @@ def read_settings():
 
 
 # get password list
-def getPasswordList(dir):
+def getPasswordList(dir_):
     """ get the password list from the passwords.txt file (under current directory and under users home directory), return a list of passwords """
     passwordList = [""]
     # check if the password file exists
-    if not os.path.exists(os.path.join(dir, "passwords.txt")):
+    if not os.path.exists(os.path.join(dir_, "passwords.txt")):
         log_msg("passwords.txt not found", log_level=5)
     else:
-        with open(os.path.join(dir, "passwords.txt"), "r") as f:
+        with open(os.path.join(dir_, "passwords.txt"), "r") as f:
             for line in f:
                 passwordList.append(line.strip())
     # print info message
@@ -159,6 +159,59 @@ def getPasswordList(dir):
 
     log_msg(f"Found {len(passwordList):d} passwords in total", log_level=4)
     return passwordList
+
+
+def check_if_is_program(dir_):
+    """ check if the directory is a program directory, return True if yes, otherwise return False """
+    if not os.path.isdir(dir_):
+        return False
+
+    # criteria 1 : files just extracted contains at the same time .dll and .exe files
+    contains_dll = False
+    contains_exe = False
+    for root, dirs, files in os.walk(dir_):
+        for file_ in files:
+            if file_.endswith(".dll"):
+                contains_dll = True
+            if file_.endswith(".exe"):
+                contains_exe = True
+
+    # criteria 2 : files just extracted contains at the same time .exe files and folders
+    contains_folder = False
+    if any(os.path.isdir(os.path.join(dir_, item)) for item in os.listdir(dir_)):
+        contains_folder = True
+
+    if contains_exe and (contains_folder or contains_dll):
+        log_msg(f"Files unzipped to {dir_} is a program, will not go to next level", log_level=3)
+        return True
+    else:
+        return False
+
+def check_if_is_image_collection(dir_):
+    """ check if the directory is a image collection directory, return True if yes, otherwise return False """
+    # if a directory contains more than 2 image files return true
+    if not os.path.isdir(dir_):
+        return False
+    image_extensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".tif"]
+    image_count = 0
+    for root, dirs, files in os.walk(dir_):
+        for file_ in files:
+            if os.path.splitext(file_)[1].lower() in image_extensions:
+                image_count += 1
+    if image_count > 2:
+        log_msg(f"Files unzipped to {dir_} is a image collection, will not go to next level", log_level=3)
+        return True
+
+
+def check_if_is_last_level(dir_):
+    """ check if the file just unzipped to dir_ is the last level, return True if yes, otherwise return False """
+    if not os.path.isdir(dir_):
+        return False
+    if check_if_is_program(dir_):
+        return True
+    if check_if_is_image_collection(dir_):
+        return True
+    return False
 
 
 # unzip a file
@@ -264,60 +317,10 @@ def unzipFileWith7z(
         return False, lv
 
     if has_archive:
-        files = os.listdir(f"{file}lv{lv:d}")
-
-        # check if the file just unzipped is a normal file
-        is_normal_dll = 0
-        if ".rdata" in files:
-            is_normal_dll += 1
-        if ".text" in files:
-            is_normal_dll += 1
-        if ".data" in files:
-            is_normal_dll += 1
-        if ".idata" in files:
-            is_normal_dll += 1
-        if is_normal_dll >= 2:
-            log_msg(f"File {file} is a normal file, skipping...", log_level=5)
-            shutil.rmtree(path=f"{file}lv{lv:d}", ignore_errors=True)
+        # check if is the last level
+        if check_if_is_last_level(f"{file}lv{lv:d}"):
+            # the file just unzipped is a program, stop at this level
             return False, lv
-        else:
-            log_msg(f"File {file} just unzipped is an archive", log_level=3)
-            if autodelete:
-                os.remove(file)
-
-        # check if last level is reached
-        # criteria 1 : files just extracted contains at the same time .dll and .exe files (it is a program)
-        contains_dll = False
-        contains_exe = False
-        for root, dirs, files in os.walk(f"{file}lv{lv:d}"):
-            for file_ in files:
-                if file_.endswith(".dll"):
-                    contains_dll = True
-                if file_.endswith(".exe"):
-                    contains_exe = True
-        if contains_dll and contains_exe:
-            log_msg(f"File {file} is a program, will not go to next level", log_level=4)
-            log_msg(
-                "If you insist it is an archive, please change manually the extension of the file.",
-                log_level=4,
-            )
-            return False, lv
-
-        # criteria 2 : files just extracted contains at the same time .exe files and folders (it is a program without .dll files)
-        contains_folder = False
-        if any(
-            os.path.isdir(os.path.join(f"{file}lv{lv:d}", item))
-            for item in os.listdir(f"{file}lv{lv:d}")
-        ):
-            contains_folder = True
-
-        if contains_exe and contains_folder:
-            log_msg(
-                f"Files unzipped from {file} is a program, will not go to next level", log_level=3
-            )
-            return False, lv
-
-        # other files without .dll or .exe files will automatically stop at the next level
 
         log_msg(
             f"Archive {file} has been unzipped to {file}lv{lv:d}, going to next level", log_level=3
