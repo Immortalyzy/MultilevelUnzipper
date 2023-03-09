@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "args": [
-                "F:\\Toys\\download\\test"
+                "./test"
             ],
             "console": "integratedTerminal",
             "justMyCode": true
