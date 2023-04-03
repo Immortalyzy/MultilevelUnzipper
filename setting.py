@@ -6,7 +6,7 @@ from datetime import datetime
 
 # for simplicity, use global variables to store write to file settings
 settings = {
-    "write_to_file": False,
+    "log_to_file": False,
     "log_file_name": "unzipper_log.txt",
     "zip_excutible_path": "C:\\Program Files\\7-Zip\\7z.exe",
     "autodelete": False,
@@ -30,7 +30,7 @@ def log_msg(message, log_level=3):
             time_message += "-"
         time_message += " " + message
 
-        if settings["write_to_file"]:
+        if settings["log_to_file"]:
             with open(settings["log_file_name"], "a") as f:
                 f.write(time_message + "\n")
         else:
