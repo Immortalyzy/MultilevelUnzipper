@@ -14,6 +14,7 @@ settings = {
     "automoveup": False,
     "unzipsubfolder": False,
     "log_level": 3,
+    "pass_in_file_seperator": "_",
 }
 
 # the settings .json file will be stored in the users home directory

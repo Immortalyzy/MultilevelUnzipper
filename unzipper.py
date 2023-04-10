@@ -2,9 +2,10 @@
 import os
 import shutil
 import subprocess
+import threading
 
 from last_level import check_if_is_last_level
-from setting import log_msg
+from setting import log_msg, settings
 
 
 # get password list
@@ -29,6 +30,25 @@ def getPasswordList(dir_):
 
     log_msg(f"Found {len(passwordList):d} passwords in total", log_level=4)
     return passwordList
+
+
+def getPassInFileName(file):
+    """ get the password from the file name, return the password if found, otherwise return None """
+
+    # get the entire file name
+    file_name = os.path.basename(file)
+
+    index = file_name.rfind(settings["pass_in_file_seperator"])
+    if index != -1:
+        password_full = file_name[index + 1 :]
+        # remove possible file extension
+        index = password_full.rfind(".")
+        if index != -1:
+            password_part = password_full[:index]
+        passwords_in_file = [password_part, password_full]
+        return passwords_in_file
+    else:
+        return None
 
 
 # unzip a file
@@ -67,12 +87,16 @@ def unzipFileWith7z(
 
     log_msg(f"Unzipping {file} without password...", log_level=2)
 
+    timer = threading.Timer(2, print, ["Unzipping is taking time, please wait..."])
+    timer.start()
     result = subprocess.run(
         [z7path, "x", "-p", file, f"-o{file}lv{lv:d}"],
         capture_output=True,
         stdin=subprocess.DEVNULL,
         check=False,
     )
+    timer.cancel()
+
     if (
         result.returncode == 2
         and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1
@@ -104,15 +128,49 @@ def unzipFileWith7z(
         log_msg(result.stderr.decode("utf-8", errors="replace"), log_level=5)
         return False, lv
 
+    # try to unzip with password in file name
+    if password_protected and not right_pass_found:
+        passwords_in_file = getPassInFileName(file)
+        # add these passwords to be begining of the passwords list
+        if passwords_in_file is not None:
+            passwords = passwords_in_file + passwords
+            for password in passwords_in_file:
+                timer = threading.Timer(2, print, ["Unzipping is taking time, please wait..."])
+                timer.start()
+                result = subprocess.run(
+                    [z7path, "x", f"-p{password}", file, f"-o{file}lv{lv:d}"],
+                    capture_output=True,
+                    stdin=subprocess.DEVNULL,
+                    check=False,
+                )
+                timer.cancel()
+                if (
+                    result.returncode == 2
+                    and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1
+                ):
+                    # remove empty files created due to wrong password
+                    shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
+                else:
+                    log_msg(
+                        f"Correct password for {file} is {password} (contained in file name), unzipped to {file}lv{lv:d}",
+                        log_level=3,
+                    )
+                    has_archive = True
+                    right_pass_found = True
+                    break
+
     # unzip with password
-    if password_protected:
+    if password_protected and not right_pass_found:
         for password in passwords:
+            timer = threading.Timer(2, print, ["Unzipping is taking time, please wait..."])
+            timer.start()
             result = subprocess.run(
                 [z7path, "x", f"-p{password}", file, f"-o{file}lv{lv:d}"],
                 capture_output=True,
                 stdin=subprocess.DEVNULL,
                 check=False,
             )
+            timer.cancel()
             if (
                 result.returncode == 2
                 and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1
