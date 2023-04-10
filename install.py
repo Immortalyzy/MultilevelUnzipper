@@ -12,6 +12,16 @@ import winreg
 from setting import settings as example_settings
 from setting import setting_file_name
 
+import ctypes
+import sys
+
+
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
 
 # this version I needs click "show more options" to see the option
 # def add_context_menu_option(option_name, exe_path, reg_class):
@@ -85,6 +95,7 @@ def on_install_click(collected_settings_vars):
     appdata_path = os.getenv("APPDATA")
     destination_folder = os.path.join(appdata_path, "MultilevelUnzipper")
     os.makedirs(destination_folder, exist_ok=True)
+    # copy and replace if exists
     shutil.copy("./MultilevelUnzipper.exe", destination_folder)
 
     try:
@@ -172,4 +183,12 @@ def main():
 
 
 if __name__ == "__main__":
+
+    # Check if the script is running with administrator privileges
+    if not is_admin():
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, sys.argv[0], None, 1)
+    else:
+        # Your code here
+        print("Running with administrator privileges")
+
     main()
