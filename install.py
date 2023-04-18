@@ -8,6 +8,7 @@ import shutil
 import json
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 import winreg
 from setting import settings as example_settings
 from setting import setting_file_name
@@ -56,13 +57,13 @@ def add_context_menu_option(option_name, exe_path, reg_class):
     reg_class (str): The registry class for the context menu option.
     """
     try:
-        registry_path = fr"Software\\Classes\\{reg_class}\\shell\\{option_name}"
+        registry_path = rf"Software\\Classes\\{reg_class}\\shell\\{option_name}"
         command = f'"{exe_path}" "%V"'
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, registry_path) as key:
             winreg.SetValue(key, "", winreg.REG_SZ, option_name)
             winreg.SetValue(key, "Extended", winreg.REG_SZ, "")
 
-        registry_path_command = fr"{registry_path}\command"
+        registry_path_command = rf"{registry_path}\command"
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, registry_path_command) as key:
             winreg.SetValue(key, "", winreg.REG_SZ, command)
     except Exception as e:
@@ -95,8 +96,19 @@ def on_install_click(collected_settings_vars):
     appdata_path = os.getenv("APPDATA")
     destination_folder = os.path.join(appdata_path, "MultilevelUnzipper")
     os.makedirs(destination_folder, exist_ok=True)
+
     # copy and replace if exists
-    shutil.copy("./MultilevelUnzipper.exe", destination_folder)
+    src_folder = "./MultilevelUnzipper"
+    for item in os.listdir(src_folder):
+        src_item_path = os.path.join(src_folder, item)
+        dst_item_path = os.path.join(destination_folder, item)
+
+        if os.path.isfile(src_item_path):
+            shutil.copy(src_item_path, dst_item_path)
+        elif os.path.isdir(src_item_path):
+            if os.path.exists(dst_item_path):
+                shutil.rmtree(dst_item_path)
+            shutil.copytree(src_item_path, dst_item_path)
 
     try:
         # ... Rest of the on_install_click function ...
@@ -111,6 +123,10 @@ def on_install_click(collected_settings_vars):
         # ... Rest of the on_install_click function ...
     except Exception as e:
         print(f"Installation failed: {e}")
+        return
+    
+     # Show a pop-up message when the installation finishes successfully
+     messagebox.showinfo("Installation Complete", "MultilevelUnzipper has been installed successfully!")
 
 
 def create_setting_component(parent, row, setting_key, setting_value):
@@ -183,7 +199,6 @@ def main():
 
 
 if __name__ == "__main__":
-
     # Check if the script is running with administrator privileges
     if not is_admin():
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, sys.argv[0], None, 1)
