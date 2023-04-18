@@ -130,3 +130,5 @@ if __name__ == "__main__":
         # run the main function
         if os.path.exists(sys.argv[1]):
             main(sys.argv[1],)
+
+    input("Press Enter to exit...")
