@@ -124,9 +124,11 @@ def on_install_click(collected_settings_vars):
     except Exception as e:
         print(f"Installation failed: {e}")
         return
-    
-     # Show a pop-up message when the installation finishes successfully
-     messagebox.showinfo("Installation Complete", "MultilevelUnzipper has been installed successfully!")
+
+    # Show a pop-up message when the installation finishes successfully
+    messagebox.showinfo(
+        "Installation Complete", "MultilevelUnzipper has been installed successfully!"
+    )
 
 
 def create_setting_component(parent, row, setting_key, setting_value):
