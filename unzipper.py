@@ -10,13 +10,14 @@ from setting import log_msg, settings
 
 # get password list
 def getPasswordList(dir_):
-    """ get the password list from the passwords.txt file (under current directory and under users home directory), return a list of passwords """
+    """get the password list from the passwords.txt file (under current directory and under users home directory), return a list of passwords"""
     passwordList = [""]
     # check if the password file exists
     if not os.path.exists(os.path.join(dir_, "passwords.txt")):
         log_msg("passwords.txt not found", log_level=5)
     else:
-        with open(os.path.join(dir_, "passwords.txt"), "r") as f:
+        # open with utf8 encoding
+        with open(os.path.join(dir_, "passwords.txt"), "r", encoding="utf8") as f:
             for line in f:
                 passwordList.append(line.strip())
     # print info message
@@ -24,7 +25,9 @@ def getPasswordList(dir_):
 
     # global password is stored in ~/.passwords.txt
     if os.path.exists(os.path.join(os.path.expanduser("~"), ".passwords.txt")):
-        with open(os.path.join(os.path.expanduser("~"), ".passwords.txt"), "r") as f:
+        with open(
+            os.path.join(os.path.expanduser("~"), ".passwords.txt"), "r", encoding="utf8"
+        ) as f:
             for line in f:
                 passwordList.append(line.strip())
 
@@ -33,7 +36,7 @@ def getPasswordList(dir_):
 
 
 def getPassInFileName(file):
-    """ get the password from the file name, return the password if found, otherwise return None """
+    """get the password from the file name, return the password if found, otherwise return None"""
 
     # get the entire file name
     file_name = os.path.basename(file)
@@ -55,7 +58,7 @@ def getPassInFileName(file):
 def unzipFileWith7z(
     file, z7path, passwords, autodelete=False, autodeleteexisting=False, lv=0, maximum_lv=2
 ):
-    """ principle function, unzip a file with 7z.exe, return True if success, otherwise return False """
+    """principle function, unzip a file with 7z.exe, return True if success, otherwise return False"""
     has_archive = False
     password_protected = False
 
@@ -212,7 +215,7 @@ def unzipFileWith7z(
 
 
 def move_files_up(dir_path):
-    """ remove all redundant directories and move all files up to the first level """
+    """remove all redundant directories and move all files up to the first level"""
     contents = os.listdir(dir_path)
     log_msg(f"Moving files up in {dir_path}", log_level=3)
 
