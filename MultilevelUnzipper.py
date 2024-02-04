@@ -12,7 +12,7 @@ from unzipper import getPasswordList, move_files_up, unzipFileWith7z
 
 ################### MAIN FUNCTION ################################################################
 def main(target):
-    """ main function, can take both a file or a directory as argument """
+    """main function, can take both a file or a directory as argument"""
     # load settings
     valid_ = read_settings()
     if not valid_:
@@ -66,10 +66,13 @@ def main(target):
                         autodeleteexisting=settings["autodeleteexisting"],
                     )
                     finished_files += 1
-                    finished_files_size += os.path.getsize(os.path.join(root, file)) / 1024 / 1024
+                    finished_files_size += (
+                        os.path.getsize(os.path.join(root, file)) / 1024 / 1024
+                    )
                     if success:
                         log_msg(
-                            f"vv Archive {file} has been unzipped to {file}lv{0:d}", log_level=5
+                            f"vv Archive {file} has been unzipped to {file}lv{0:d}",
+                            log_level=5,
                         )
                         successed += 1
                     else:
@@ -95,9 +98,14 @@ def main(target):
                     autodeleteexisting=settings["autodeleteexisting"],
                 )
                 finished_files += 1
-                finished_files_size += os.path.getsize(os.path.join(target, file)) / 1024 / 1024
+                finished_files_size += (
+                    os.path.getsize(os.path.join(target, file)) / 1024 / 1024
+                )
                 if success:
-                    log_msg(f"vv Archive {file} has been unzipped to {file}lv{0:d}", log_level=5)
+                    log_msg(
+                        f"vv Archive {file} has been unzipped to {file}lv{0:d}",
+                        log_level=5,
+                    )
                     successed += 1
                 else:
                     log_msg(f"-- {file} cannot be unzipped.", log_level=5)
@@ -129,6 +137,8 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         # run the main function
         if os.path.exists(sys.argv[1]):
-            main(sys.argv[1],)
+            main(
+                sys.argv[1],
+            )
 
     input("Press Enter to exit...")

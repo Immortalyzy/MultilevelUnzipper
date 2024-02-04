@@ -1,5 +1,6 @@
 """ MultiLevelUnzipper - unzip multiple levels of zip files at once """
 import os
+import re
 import shutil
 import subprocess
 import threading
@@ -21,12 +22,16 @@ def getPasswordList(dir_):
             for line in f:
                 passwordList.append(line.strip())
     # print info message
-    log_msg(f"Found {len(passwordList):d} passwords in local passwords.txt", log_level=3)
+    log_msg(
+        f"Found {len(passwordList):d} passwords in local passwords.txt", log_level=3
+    )
 
     # global password is stored in ~/.passwords.txt
     if os.path.exists(os.path.join(os.path.expanduser("~"), ".passwords.txt")):
         with open(
-            os.path.join(os.path.expanduser("~"), ".passwords.txt"), "r", encoding="utf8"
+            os.path.join(os.path.expanduser("~"), ".passwords.txt"),
+            "r",
+            encoding="utf8",
         ) as f:
             for line in f:
                 passwordList.append(line.strip())
@@ -56,7 +61,13 @@ def getPassInFileName(file):
 
 # unzip a file
 def unzipFileWith7z(
-    file, z7path, passwords, autodelete=False, autodeleteexisting=False, lv=0, maximum_lv=2
+    file,
+    z7path,
+    passwords,
+    autodelete=False,
+    autodeleteexisting=False,
+    lv=0,
+    maximum_lv=2,
 ):
     """principle function, unzip a file with 7z.exe, return True if success, otherwise return False"""
     has_archive = False
@@ -73,13 +84,28 @@ def unzipFileWith7z(
         log_msg(f"File {file} is a .lib, .dll or .exe file, skipping...", log_level=5)
         return False, lv
 
+    # check if is a multi-archive sub archives, if yes skip
+    multi_archive_regex = r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
+    if re.search(multi_archive_regex, file):
+        log_msg(
+            f"File {file} is a multi-archive non-principle part, skipping...",
+            log_level=5,
+        )
+        return False, lv
+
     # check if the output directory already exists
     if os.path.exists(f"{file}lv{lv:d}"):
         if autodeleteexisting:
-            log_msg(f"Output directory {file}lv{lv:d} already exists, deleting...", log_level=4)
+            log_msg(
+                f"Output directory {file}lv{lv:d} already exists, deleting...",
+                log_level=4,
+            )
             shutil.rmtree(f"{file}lv{lv:d}")
         else:
-            log_msg(f"Output directory {file}lv{lv:d} already exists, skipping...", log_level=4)
+            log_msg(
+                f"Output directory {file}lv{lv:d} already exists, skipping...",
+                log_level=4,
+            )
             return False, lv
 
     # unzip without password
@@ -105,14 +131,17 @@ def unzipFileWith7z(
         and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1
     ):
         log_msg(
-            f"Archive {file} is password protected, start to unzip with passwords...", log_level=2
+            f"Archive {file} is password protected, start to unzip with passwords...",
+            log_level=2,
         )
         shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
         has_archive = True
         password_protected = True
     if (
         result.returncode == 2
-        and result.stderr.decode("utf-8", errors="replace").find("Cannot open the file as archive")
+        and result.stderr.decode("utf-8", errors="replace").find(
+            "Cannot open the file as archive"
+        )
         != -1
     ):
         if lv == 0:
@@ -122,7 +151,8 @@ def unzipFileWith7z(
         return False, lv
     if result.returncode == 0:
         log_msg(
-            f"Archive {file} is not password protected, unzipped to {file}lv{lv:d}", log_level=3
+            f"Archive {file} is not password protected, unzipped to {file}lv{lv:d}",
+            log_level=3,
         )
         right_pass_found = True
         has_archive = True
@@ -138,7 +168,9 @@ def unzipFileWith7z(
         if passwords_in_file is not None:
             passwords = passwords_in_file + passwords
             for password in passwords_in_file:
-                timer = threading.Timer(2, print, ["Unzipping is taking time, please wait..."])
+                timer = threading.Timer(
+                    2, print, ["Unzipping is taking time, please wait..."]
+                )
                 timer.start()
                 result = subprocess.run(
                     [z7path, "x", f"-p{password}", file, f"-o{file}lv{lv:d}"],
@@ -149,7 +181,10 @@ def unzipFileWith7z(
                 timer.cancel()
                 if (
                     result.returncode == 2
-                    and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1
+                    and result.stderr.decode("utf-8", errors="replace").find(
+                        "Wrong password"
+                    )
+                    != -1
                 ):
                     # remove empty files created due to wrong password
                     shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
@@ -165,7 +200,11 @@ def unzipFileWith7z(
     # unzip with password
     if password_protected and not right_pass_found:
         for password in passwords:
-            timer = threading.Timer(2, print, ["Unzipping is taking time, please wait..."])
+            timer = threading.Timer(
+                2,
+                print,
+                [f"Unzipping is taking time (password is {password}), please wait..."],
+            )
             timer.start()
             result = subprocess.run(
                 [z7path, "x", f"-p{password}", file, f"-o{file}lv{lv:d}"],
@@ -176,7 +215,10 @@ def unzipFileWith7z(
             timer.cancel()
             if (
                 result.returncode == 2
-                and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1
+                and result.stderr.decode("utf-8", errors="replace").find(
+                    "Wrong password"
+                )
+                != -1
             ):
                 # remove empty files created due to wrong password
                 shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
@@ -187,6 +229,10 @@ def unzipFileWith7z(
                 )
                 has_archive = True
                 right_pass_found = True
+                if autodelete:
+                    # delete the original file if autodelete is True
+                    os.remove(file)
+
                 break
 
     # no password found for the file
@@ -201,14 +247,20 @@ def unzipFileWith7z(
             return False, lv
 
         log_msg(
-            f"Archive {file} has been unzipped to {file}lv{lv:d}, going to next level", log_level=3
+            f"Archive {file} has been unzipped to {file}lv{lv:d}, going to next level",
+            log_level=3,
         )
         lv += 1
         # recursively unzip the files in the directory just created
         for root, dirs, files in os.walk(f"{file}lv{lv-1:d}"):
             for file in files:
                 unzipFileWith7z(
-                    os.path.join(root, file), z7path, passwords, autodelete, autodeleteexisting, lv
+                    os.path.join(root, file),
+                    z7path,
+                    passwords,
+                    autodelete,
+                    autodeleteexisting,
+                    lv,
                 )
         return True, lv
     return False, lv
