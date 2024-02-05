@@ -90,6 +90,9 @@ def main(target):
             # unzip all files in the target directory, but not including files under subfolders
             list_of_files = os.listdir(target)
             for file in tqdm(os.listdir(target)):
+                finished_files_size += (
+                    os.path.getsize(os.path.join(target, file)) / 1024 / 1024
+                )
                 success, lv = unzipFileWith7z(
                     os.path.join(target, file),
                     settings["zip_excutible_path"],
@@ -98,9 +101,6 @@ def main(target):
                     autodeleteexisting=settings["autodeleteexisting"],
                 )
                 finished_files += 1
-                finished_files_size += (
-                    os.path.getsize(os.path.join(target, file)) / 1024 / 1024
-                )
                 if success:
                     log_msg(
                         f"vv Archive {file} has been unzipped to {file}lv{0:d}",

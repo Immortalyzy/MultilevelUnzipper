@@ -4,9 +4,13 @@ import re
 import shutil
 import subprocess
 import threading
+import send2trash
 
 from last_level import check_if_is_last_level
 from setting import log_msg, settings
+
+# regex for multi-part archives
+multi_archive_regex = r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
 
 
 # get password list
@@ -73,6 +77,32 @@ def getPassInFileName(file):
     return possible_passwords
 
 
+def remove_archive(file):
+    """remove archive files just unzipped, finding all parts of multi-part archives and remove them"""
+    # get the file list in the directory containing the file
+    files = os.listdir(os.path.dirname(file))
+
+    # get the base name of the file
+    base_name = os.path.basename(file)
+
+    # remove extensions
+    base_name = base_name.split(".")[0]
+
+    # combine the base name and the multi-part archive regex
+    multi_archive_regex_of_this = base_name + r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
+
+    # find all files matching the multi-part archive regex
+    multi_archives = [f for f in files if re.search(multi_archive_regex_of_this, f)]
+
+    # delete all files matching the multi-part archive regex to the recycle bin
+    log_msg(f"Removing {len(multi_archives):d} multi-part archives", log_level=3)
+    for f in multi_archives:
+        send2trash.send2trash(os.path.join(os.path.dirname(file), f))
+
+    # delete the original file to the recycle bin
+    send2trash.send2trash(file)
+
+
 # unzip a file
 def unzipFileWith7z(
     file,
@@ -99,7 +129,6 @@ def unzipFileWith7z(
         return False, lv
 
     # check if is a multi-archive sub archives, if yes skip
-    multi_archive_regex = r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
     if re.search(multi_archive_regex, file):
         log_msg(
             f"File {file} is a multi-archive non-principle part, skipping...",
@@ -249,7 +278,7 @@ def unzipFileWith7z(
                 right_pass_found = True
                 if autodelete:
                     # delete the original file if autodelete is True
-                    os.remove(file)
+                    remove_archive(file)
 
                 break
 
@@ -258,10 +287,11 @@ def unzipFileWith7z(
         log_msg(f"Cannot find the correct password for {file}", log_level=5)
         return False, lv
 
+    # trying to unzip the files in the directory just created
     if has_archive:
         # check if is the last level
         if check_if_is_last_level(f"{file}lv{lv:d}"):
-            # the file just unzipped is a program, stop at this level
+            # the file just unzipped is the final level
             return False, lv
 
         log_msg(
