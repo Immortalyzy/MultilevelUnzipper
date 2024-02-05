@@ -115,8 +115,8 @@ def main(target):
                 for file in list_of_files:
                     dir_ = os.path.join(target, file + "lv0")
                     # move up only the list of files just unzipped
-                    if os.path.isdir(os.path.join(target, dir_)):
-                        move_files_up(os.path.join(target, dir_))
+                    if os.path.isdir(dir_):
+                        move_files_up(dir_)
 
     # if target is a file
     if os.path.isfile(target):
