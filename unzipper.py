@@ -92,7 +92,7 @@ def remove_archive(file):
     base_name = base_name.split(".")[0]
 
     # combine the base name and the multi-part archive regex
-    multi_archive_regex_of_this = base_name + r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
+    multi_archive_regex_of_this = re.escape(base_name) + r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
 
     # find all files matching the multi-part archive regex
     multi_archives = [f for f in files if re.search(multi_archive_regex_of_this, f)]
