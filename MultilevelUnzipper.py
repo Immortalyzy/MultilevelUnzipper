@@ -135,7 +135,7 @@ def main(target):
             autodeleteexisting=settings["autodeleteexisting"],
         )
         if settings["automoveup"]:
-            move_files_up(target)
+            move_files_up(target + "lv0")
 
 
 ################### MAIN FUNCTION ################################################################
