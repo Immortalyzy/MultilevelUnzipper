@@ -1,12 +1,14 @@
 """ This module contains functions used to check if a directory is the last level of a zip file """
 import mimetypes
 import os
+from setting import Config
+from log_msg import log_msg
 
-from setting import log_msg
+settings = Config.get_instance().settings
 
 
 def check_if_is_program(dir_):
-    """ check if the directory is a program directory, return True if yes, otherwise return False """
+    """check if the directory is a program directory, return True if yes, otherwise return False"""
     if not os.path.isdir(dir_):
         return False
 
@@ -26,14 +28,17 @@ def check_if_is_program(dir_):
         contains_folder = True
 
     if contains_exe and (contains_folder or contains_dll):
-        log_msg(f"Files unzipped to {dir_} is a program, will not go to next level", log_level=3)
+        log_msg(
+            f"Files unzipped to {dir_} is a program, will not go to next level",
+            log_level=3,
+        )
         return True
     else:
         return False
 
 
 def check_if_is_image_collection(dir_):
-    """ check if the directory is a image collection directory, return True if yes, otherwise return False """
+    """check if the directory is a image collection directory, return True if yes, otherwise return False"""
     # if a directory contains more than 2 image files return true
     if not os.path.isdir(dir_):
         return False
@@ -53,7 +58,7 @@ def check_if_is_image_collection(dir_):
 
 
 def check_if_is_video_or_video_collection(dir_):
-    """ check if the directory is a video or video collection directory, return True if yes, otherwise return False """
+    """check if the directory is a video or video collection directory, return True if yes, otherwise return False"""
     # sometimes there is only one video
     # checking of the file can only be done with the file extension
     has_video_file = False
@@ -66,7 +71,7 @@ def check_if_is_video_or_video_collection(dir_):
 
 
 def check_if_is_last_level(dir_):
-    """ check if the file just unzipped to dir_ is the last level, return True if yes, otherwise return False """
+    """check if the file just unzipped to dir_ is the last level, return True if yes, otherwise return False"""
     if not os.path.isdir(dir_):
         return False
     if check_if_is_program(dir_):

@@ -7,7 +7,10 @@ import threading
 import send2trash
 
 from last_level import check_if_is_last_level
-from setting import log_msg, settings
+from setting import Config
+from log_msg import log_msg
+
+settings = Config.get_instance().settings
 
 # regex for multi-part archives
 multi_archive_regex = r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"

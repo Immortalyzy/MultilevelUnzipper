@@ -3,28 +3,27 @@
 import os
 import sys
 import time
+import importlib
+from datetime import datetime
 
 from tqdm import tqdm
 
-from setting import log_msg, read_settings, settings
+from setting import Config
+from log_msg import log_msg
 from unzipper import getPasswordList, move_files_up, unzipFileWith7z
+
+settings = Config.get_instance().settings
 
 
 ################### MAIN FUNCTION ################################################################
 def main(target):
     """main function, can take both a file or a directory as argument"""
     # load settings
-    valid_ = read_settings()
-    if not valid_:
-        print("Settings file is not valid, please check the settings file")
-        input("Press any key to exit...")
-        return
-    else:
-        print("Settings file is valid")
-        # print the settings
-        print("Settings:")
-        for key, value in settings.items():
-            print(f"\t{key} : {value}")
+
+    # print the settings
+    print("Settings:")
+    for key, value in settings.items():
+        print(f"\t{key} : {value}")
 
     # get the password list
     passwords = getPasswordList(target)
@@ -58,6 +57,9 @@ def main(target):
             # unzip all files including files under subfolders
             for root, dirs, files in os.walk(target):
                 for file in tqdm(files):
+                    finished_files_size += (
+                        os.path.getsize(os.path.join(root, file)) / 1024 / 1024
+                    )
                     success, lv = unzipFileWith7z(
                         os.path.join(root, file),
                         settings["zip_excutible_path"],
@@ -66,9 +68,6 @@ def main(target):
                         autodeleteexisting=settings["autodeleteexisting"],
                     )
                     finished_files += 1
-                    finished_files_size += (
-                        os.path.getsize(os.path.join(root, file)) / 1024 / 1024
-                    )
                     if success:
                         log_msg(
                             f"vv Archive {file} has been unzipped to {file}lv{0:d}",
@@ -88,8 +87,16 @@ def main(target):
                         move_files_up(os.path.join(target, dir_))
         else:
             # unzip all files in the target directory, but not including files under subfolders
+            # get all items in the target directory
             list_of_files = os.listdir(target)
-            for file in tqdm(os.listdir(target)):
+            # create a list of files (not directories)
+            list_of_files = [
+                file
+                for file in list_of_files
+                if os.path.isfile(os.path.join(target, file))
+            ]
+
+            for file in tqdm(list_of_files):
                 finished_files_size += (
                     os.path.getsize(os.path.join(target, file)) / 1024 / 1024
                 )
