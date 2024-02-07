@@ -20,6 +20,13 @@ multi_archive_regex = r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
 def getPasswordList(dir_):
     """get the password list from the passwords.txt file (under current directory and under users home directory), return a list of passwords"""
     passwordList = [""]
+    # check if dir_ is a file or a directory
+    if os.path.isfile(dir_):
+        dir_ = os.path.dirname(dir_)
+    elif not os.path.isdir(dir_):
+        log_msg(f"{dir_} is not a file or a directory", log_level=5)
+        return passwordList
+
     # check if the password file exists
     if not os.path.exists(os.path.join(dir_, "passwords.txt")):
         log_msg("passwords.txt not found", log_level=5)
@@ -92,7 +99,9 @@ def remove_archive(file):
     base_name = base_name.split(".")[0]
 
     # combine the base name and the multi-part archive regex
-    multi_archive_regex_of_this = re.escape(base_name) + r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
+    multi_archive_regex_of_this = (
+        re.escape(base_name) + r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
+    )
 
     # find all files matching the multi-part archive regex
     multi_archives = [f for f in files if re.search(multi_archive_regex_of_this, f)]
