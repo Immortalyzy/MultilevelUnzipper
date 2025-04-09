@@ -1,4 +1,5 @@
-""" MultiLevelUnzipper - unzip multiple levels of zip files at once """
+"""MultiLevelUnzipper - unzip multiple levels of zip files at once"""
+
 import os
 import re
 import shutil
@@ -36,9 +37,7 @@ def getPasswordList(dir_):
             for line in f:
                 passwordList.append(line.strip())
     # print info message
-    log_msg(
-        f"Found {len(passwordList):d} passwords in local passwords.txt", log_level=3
-    )
+    log_msg(f"Found {len(passwordList):d} passwords in local passwords.txt", log_level=3)
 
     # global password is stored in ~/.passwords.txt
     if os.path.exists(os.path.join(os.path.expanduser("~"), ".passwords.txt")):
@@ -72,14 +71,10 @@ def getPassInFileName(file):
         if "." in pass_candidate:
             # Consider both with and without the extension as potential passwords
             without_extension = pass_candidate.split(".", 1)[0]
-            possible_passwords.append(
-                without_extension
-            )  # Without considering "." as part of the password
+            possible_passwords.append(without_extension)  # Without considering "." as part of the password
             # Check if "." should be considered part of the password
             if pass_candidate.rfind(".") > pass_candidate.rfind("_"):
-                possible_passwords.append(
-                    pass_candidate
-                )  # Considering "." as part of the password
+                possible_passwords.append(pass_candidate)  # Considering "." as part of the password
         else:
             # No "." found, so the entire remainder is the password
             possible_passwords.append(pass_candidate)
@@ -99,9 +94,7 @@ def remove_archive(file):
     base_name = base_name.split(".")[0]
 
     # combine the base name and the multi-part archive regex
-    multi_archive_regex_of_this = (
-        re.escape(base_name) + r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
-    )
+    multi_archive_regex_of_this = re.escape(base_name) + r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
 
     # find all files matching the multi-part archive regex
     multi_archives = [f for f in files if re.search(multi_archive_regex_of_this, f)]
@@ -181,10 +174,7 @@ def unzipFileWith7z(
     )
     timer.cancel()
 
-    if (
-        result.returncode == 2
-        and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1
-    ):
+    if result.returncode == 2 and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1:
         log_msg(
             f"Archive {file} is password protected, start to unzip with passwords...",
             log_level=2,
@@ -194,10 +184,7 @@ def unzipFileWith7z(
         password_protected = True
     if (
         result.returncode == 2
-        and result.stderr.decode("utf-8", errors="replace").find(
-            "Cannot open the file as archive"
-        )
-        != -1
+        and result.stderr.decode("utf-8", errors="replace").find("Cannot open the file as archive") != -1
     ):
         if lv == 0:
             log_msg(f'File "{file}" is not an archive', log_level=4)
@@ -226,9 +213,7 @@ def unzipFileWith7z(
                 timer = threading.Timer(
                     2,
                     print,
-                    [
-                        f"Unzipping is taking time (password is {password}), please wait..."
-                    ],
+                    [f"Unzipping is taking time (password is {password}), please wait..."],
                 )
                 timer.start()
                 result = subprocess.run(
@@ -240,10 +225,7 @@ def unzipFileWith7z(
                 timer.cancel()
                 if (
                     result.returncode == 2
-                    and result.stderr.decode("utf-8", errors="replace").find(
-                        "Wrong password"
-                    )
-                    != -1
+                    and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1
                 ):
                     # remove empty files created due to wrong password
                     shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
@@ -272,13 +254,7 @@ def unzipFileWith7z(
                 check=False,
             )
             timer.cancel()
-            if (
-                result.returncode == 2
-                and result.stderr.decode("utf-8", errors="replace").find(
-                    "Wrong password"
-                )
-                != -1
-            ):
+            if result.returncode == 2 and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1:
                 # remove empty files created due to wrong password
                 shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
             else:
@@ -328,6 +304,9 @@ def unzipFileWith7z(
 
 def move_files_up(dir_path):
     """remove all redundant directories and move all files up to the first level"""
+    if not os.path.isdir(dir_path):
+        log_msg(f"{dir_path} is not a directory", log_level=5)
+        return
     contents = os.listdir(dir_path)
     log_msg(f"Moving files up in {dir_path}", log_level=3)
 
