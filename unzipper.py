@@ -91,29 +91,42 @@ def getPassInFileName(file):
 
 
 def remove_archive(file):
-    """remove archive files just unzipped, finding all parts of multi-part archives and remove them"""
-    # get the file list in the directory containing the file
-    files = os.listdir(os.path.dirname(file))
+    """Remove archive files after unzipping, including all parts of multi-part archives."""
+    dir_path = os.path.dirname(file)
+    file_name = os.path.basename(file)
 
-    # get the base name of the file
-    base_name = os.path.basename(file)
+    # Extract base name (strip extensions like .part01.rar, .r00, .001, etc.)
+    base = re.split(r"\.part\d+\.rar|\.r\d+|\.z\d+|\.rar|\.7z|\.zip|\.001", file_name, flags=re.IGNORECASE)[0]
 
-    # remove extensions
-    base_name = base_name.split(".")[0]
+    # List all files in the directory
+    all_files = os.listdir(dir_path)
 
-    # combine the base name and the multi-part archive regex
-    multi_archive_regex_of_this = re.escape(base_name) + r"\.(?:part[2-9]\d*\.rar|r\d+|z\d+)$"
+    # Compile regex to match all known multi-part formats related to the base name
+    patterns = [
+        re.escape(base) + r"\.part\d+\.rar$",  # part01.rar, part02.rar
+        re.escape(base) + r"\.rar$",  # base.rar (often first file)
+        re.escape(base) + r"\.r\d{2}$",  # r00, r01
+        re.escape(base) + r"\.z\d{2}$",  # z01, z02
+        re.escape(base) + r"\.\d{3}$",  # 001, 002
+        re.escape(base) + r"\.7z\.\d{3}$",  # 7z.001, 7z.002
+        re.escape(base) + r"\.zip$",  # base.zip
+    ]
 
-    # find all files matching the multi-part archive regex
-    multi_archives = [f for f in files if re.search(multi_archive_regex_of_this, f)]
+    # Match files to be deleted
+    matched_files = []
+    for pattern in patterns:
+        regex = re.compile(pattern, re.IGNORECASE)
+        matched_files += [f for f in all_files if regex.fullmatch(f)]
 
-    # delete all files matching the multi-part archive regex to the recycle bin
-    log_msg(f"Removing {len(multi_archives):d} multi-part archives", log_level=3)
-    for f in multi_archives:
-        send2trash.send2trash(os.path.join(os.path.dirname(file), f))
+    # Remove duplicates and sort
+    matched_files = sorted(set(matched_files))
 
-    # delete the original file to the recycle bin
-    send2trash.send2trash(file)
+    # Logging
+    log_msg(f"Removing {len(matched_files)} archive part(s)", log_level=3)
+
+    # Send all to recycle bin
+    for f in matched_files:
+        send2trash.send2trash(os.path.join(dir_path, f))
 
 
 # unzip a file

@@ -1,4 +1,4 @@
-""" main function of the program """
+"""main function of the program"""
 
 import os
 import sys
@@ -57,9 +57,12 @@ def main(target):
             # unzip all files including files under subfolders
             for root, dirs, files in os.walk(target):
                 for file in tqdm(files):
-                    finished_files_size += (
-                        os.path.getsize(os.path.join(root, file)) / 1024 / 1024
-                    )
+                    # it is possible that a part of the multi-part archive is deleted and no longer exists
+                    # in this case, the file will be skipped
+                    if not os.path.exists(os.path.join(root, file)):
+                        log_msg(f"-- {file} does not exist (deleted after unzipping the main part).", log_level=5)
+                        continue
+                    finished_files_size += os.path.getsize(os.path.join(root, file)) / 1024 / 1024
                     success, lv = unzipFileWith7z(
                         os.path.join(root, file),
                         settings["zip_excutible_path"],
@@ -90,16 +93,10 @@ def main(target):
             # get all items in the target directory
             list_of_files = os.listdir(target)
             # create a list of files (not directories)
-            list_of_files = [
-                file
-                for file in list_of_files
-                if os.path.isfile(os.path.join(target, file))
-            ]
+            list_of_files = [file for file in list_of_files if os.path.isfile(os.path.join(target, file))]
 
             for file in tqdm(list_of_files):
-                finished_files_size += (
-                    os.path.getsize(os.path.join(target, file)) / 1024 / 1024
-                )
+                finished_files_size += os.path.getsize(os.path.join(target, file)) / 1024 / 1024
                 success, lv = unzipFileWith7z(
                     os.path.join(target, file),
                     settings["zip_excutible_path"],
