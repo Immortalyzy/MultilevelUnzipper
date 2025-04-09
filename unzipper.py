@@ -36,6 +36,14 @@ def getPasswordList(dir_):
         with open(os.path.join(dir_, "passwords.txt"), "r", encoding="utf8") as f:
             for line in f:
                 passwordList.append(line.strip())
+    # check if the password file exists
+    if not os.path.exists(os.path.join(dir_, ".passwords.txt")):
+        log_msg("passwords.txt not found", log_level=5)
+    else:
+        # open with utf8 encoding
+        with open(os.path.join(dir_, ".passwords.txt"), "r", encoding="utf8") as f:
+            for line in f:
+                passwordList.append(line.strip())
     # print info message
     log_msg(f"Found {len(passwordList):d} passwords in local passwords.txt", log_level=3)
 
