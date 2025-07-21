@@ -10,6 +10,7 @@ import send2trash
 from last_level import check_if_is_last_level
 from setting import Config
 from log_msg import log_msg
+from output_decode import is_not_archive, is_wrong_password
 
 settings = Config.get_instance().settings
 
@@ -187,15 +188,18 @@ def unzipFileWith7z(
 
     timer = threading.Timer(2, print, ["Unzipping is taking time, please wait..."])
     timer.start()
+    args = [z7path, "x", f"-o:{file}lv{lv:d}", file]
     result = subprocess.run(
-        [z7path, "x", "-p", file, f"-o{file}lv{lv:d}"],
+        args,
         capture_output=True,
         stdin=subprocess.DEVNULL,
         check=False,
     )
     timer.cancel()
 
-    if result.returncode == 2 and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1:
+    # when using 7z, if the file is password protected, it will return 2 and the error message will contain "Wrong password"
+    # when using bandizip, it will return 14 and the error message will contain "Wrong password"
+    if is_wrong_password(result):
         log_msg(
             f"Archive {file} is password protected, start to unzip with passwords...",
             log_level=2,
@@ -203,10 +207,10 @@ def unzipFileWith7z(
         shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
         has_archive = True
         password_protected = True
-    if (
-        result.returncode == 2
-        and result.stderr.decode("utf-8", errors="replace").find("Cannot open the file as archive") != -1
-    ):
+
+    # when using 7z, if the file is not an archive, it will return 2 and the error message will contain "Cannot open the file as archive"
+    # when using bandizip, it will return 17 and the error message will contain "Unknown archive"
+    if is_not_archive(result):
         if lv == 0:
             log_msg(f'File "{file}" is not an archive', log_level=4)
         # remove the empty directory due to file is not an archive
@@ -244,10 +248,7 @@ def unzipFileWith7z(
                     check=False,
                 )
                 timer.cancel()
-                if (
-                    result.returncode == 2
-                    and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1
-                ):
+                if is_wrong_password(result):
                     # remove empty files created due to wrong password
                     shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
                 else:
@@ -275,7 +276,7 @@ def unzipFileWith7z(
                 check=False,
             )
             timer.cancel()
-            if result.returncode == 2 and result.stderr.decode("utf-8", errors="replace").find("Wrong password") != -1:
+            if is_wrong_password(result):
                 # remove empty files created due to wrong password
                 shutil.rmtree(f"{file}lv{lv:d}", ignore_errors=True)
             else:

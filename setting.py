@@ -1,4 +1,5 @@
-""" settings and global variables for MultiLevelUnzipper.py """
+"""settings and global variables for MultiLevelUnzipper.py"""
+
 import json
 import os
 import shutil
@@ -37,7 +38,10 @@ class Config:
         temp_settings = {
             "log_to_file": False,
             "log_file_name": "unzipper_log.txt",
-            "zip_excutible_path": "C:\\Program Files\\7-Zip\\7z.exe",
+            "zip_excutible_path": "C:\\Program Files\\Bandizip\\bz.exe",
+            "zip_excutible_path_7z": "C:\\Program Files\\7-Zip\\7z.exe",
+            "zip_excutible_path_bandizip": "C:\\Program Files\\Bandizip\\bz.exe",
+            "use_bandizip": True,
             "autodelete": True,
             "autodeleteexisting": False,
             "automoveup": True,
@@ -50,6 +54,7 @@ class Config:
         if not os.path.exists(settings_file):
             # try to find the 7z.exe here
             zip_path = find7z()
+            bz_path = find_bandizip()
             if zip_path is not None:
                 temp_settings["zip_excutible_path"] = zip_path
             else:
@@ -58,6 +63,20 @@ class Config:
                     + settings_file
                     + ", remember to use double backslashes (\\\\) to escape the backslashes"
                 )
+
+            if bz_path is not None:
+                temp_settings["zip_excutible_path_bandizip"] = bz_path
+            else:
+                print(
+                    "Bandizip executable not found, please manually specify the path to Bandizip in "
+                    + settings_file
+                    + ", remember to use double backslashes (\\\\) to escape the backslashes"
+                )
+
+            # set the use_bandizip to True if the Bandizip path is found
+            temp_settings["use_bandizip"] = bz_path is not None
+            if temp_settings["use_bandizip"]:
+                temp_settings["zip_excutible_path"] = bz_path
 
             with open(settings_file, "w") as f:
                 json.dump(temp_settings, f)
@@ -113,6 +132,26 @@ def find7z():
             print("7z.exe not found, please specify the path to 7z.exe")
             return None
     return path
+
+
+def find_bandizip():
+    """find the Bandizip executable, return the path if found, otherwise return None"""
+    bandizip_names = ["bz.exe", "bz.exe"]
+    # Try to find in PATH
+    for exe_name in bandizip_names:
+        path = shutil.which(exe_name)
+        if path:
+            return path
+    # Check default installation directories
+    default_dirs = [
+        "C:\\Program Files\\Bandizip\\bz.exe",
+        "C:\\Program Files (x86)\\Bandizip\\bz.exe",
+    ]
+    for path in default_dirs:
+        if os.path.exists(path):
+            return path
+    print("Bandizip executable not found, please specify the path to Bandizip.")
+    return None
 
 
 def dict_compare(d1, d2):
