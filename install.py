@@ -1,6 +1,6 @@
 """
-this script will be exported to the "install.exe" file,
-it will automatically install the program and add right-click menus
+This script will be exported to install.exe.
+It will automatically install the program and add right-click menus.
 """
 
 import os
@@ -10,8 +10,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 import winreg
-from setting import settings as example_settings
-from setting import setting_file_name
+from setting import DEFAULT_SETTINGS, select_zip_executable_path, setting_file_name
 
 import ctypes
 import sys
@@ -20,7 +19,7 @@ import sys
 def is_admin():
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
-    except:
+    except Exception:
         return False
 
 
@@ -79,8 +78,14 @@ def save_settings(settings):
     """
     user_home = os.path.expanduser("~")
     settings_file = os.path.join(user_home, setting_file_name)
-    with open(settings_file, "w") as f:
+    with open(settings_file, "w", encoding="utf-8") as f:
         json.dump(settings, f, indent=4)
+
+
+def get_source_root():
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
 
 
 def on_install_click(collected_settings_vars):
@@ -91,6 +96,7 @@ def on_install_click(collected_settings_vars):
     collected_settings_vars (dict): A dictionary containing the Tkinter variable objects for each setting.
     """
     settings = {k: v.get() for k, v in collected_settings_vars.items()}
+    select_zip_executable_path(settings)
     save_settings(settings)
 
     appdata_path = os.getenv("APPDATA")
@@ -98,7 +104,13 @@ def on_install_click(collected_settings_vars):
     os.makedirs(destination_folder, exist_ok=True)
 
     # copy and replace if exists
-    src_folder = "./MultilevelUnzipper"
+    src_folder = os.path.join(get_source_root(), "MultilevelUnzipper")
+    if not os.path.isdir(src_folder):
+        messagebox.showerror(
+            "Installation Failed",
+            f"Source folder not found: {src_folder}",
+        )
+        return
     for item in os.listdir(src_folder):
         src_item_path = os.path.join(src_folder, item)
         dst_item_path = os.path.join(destination_folder, item)
@@ -111,7 +123,7 @@ def on_install_click(collected_settings_vars):
             shutil.copytree(src_item_path, dst_item_path)
 
     try:
-        # ... Rest of the on_install_click function ...
+        # Add context menu options
 
         # Add context menu options
         exe_path = os.path.join(destination_folder, "MultilevelUnzipper.exe")
@@ -120,7 +132,6 @@ def on_install_click(collected_settings_vars):
         )
         add_context_menu_option("Unzip this file", exe_path, "AllFileSystemObjects")
 
-        # ... Rest of the on_install_click function ...
     except Exception as e:
         print(f"Installation failed: {e}")
         return
@@ -149,7 +160,9 @@ def create_setting_component(parent, row, setting_key, setting_value):
 
     if isinstance(setting_value, str):
         setting_var = tk.StringVar(value=setting_value)
-        ttk.Entry(parent, width=40, textvariable=setting_var).grid(column=2, row=row, sticky=tk.W)
+        ttk.Entry(parent, width=40, textvariable=setting_var).grid(
+            column=2, row=row, sticky=tk.W
+        )
     elif isinstance(setting_value, bool):
         setting_var = tk.BooleanVar(value=setting_value)
         ttk.Checkbutton(parent, variable=setting_var).grid(column=2, row=row, sticky=tk.W)
@@ -165,15 +178,18 @@ def main():
     The main function that creates and displays the installer GUI.
     """
     root = tk.Tk()
-    root.title("My Script Installer")
+    root.title("MultilevelUnzipper Installer")
     root.geometry("400x300")
     root.resizable(False, False)
 
     mainframe = ttk.Frame(root, padding="20 20 20 20")
     mainframe.grid(column=0, row=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
+    install_settings = {
+        k: v for k, v in DEFAULT_SETTINGS.items() if k != "zip_executable_path"
+    }
     collected_settings_vars = {}
-    for index, (setting_key, setting_value) in enumerate(example_settings.items()):
+    for index, (setting_key, setting_value) in enumerate(install_settings.items()):
         collected_settings_vars[setting_key] = create_setting_component(
             mainframe, index + 1, setting_key, setting_value
         )
@@ -192,18 +208,16 @@ def main():
         column=1, row=len(example_settings) + 1, columnspan=2, pady=(20, 0), sticky=tk.EW
     )
 
-    # Add padding between components for a cleaner look
-    install_button = ttk.Button(
-        mainframe, text="Install", command=lambda: on_install_click(collected_settings_vars)
-    )
-
     root.mainloop()
 
 
 if __name__ == "__main__":
     # Check if the script is running with administrator privileges
     if not is_admin():
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, sys.argv[0], None, 1)
+        ctypes.windll.shell32.ShellExecuteW(
+            None, "runas", sys.executable, sys.argv[0], None, 1
+        )
+        sys.exit(0)
     else:
         # Your code here
         print("Running with administrator privileges")

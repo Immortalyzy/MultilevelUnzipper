@@ -1,10 +1,8 @@
-""" This module contains functions used to check if a directory is the last level of a zip file """
+"""This module contains functions used to check if a directory is the last level of a zip file"""
+
 import mimetypes
 import os
-from setting import Config
 from log_msg import log_msg
-
-settings = Config.get_instance().settings
 
 
 def check_if_is_program(dir_):
@@ -48,7 +46,7 @@ def check_if_is_image_collection(dir_):
         for file_ in files:
             if os.path.splitext(file_)[1].lower() in image_extensions:
                 image_count += 1
-    if image_count > 2:
+    if image_count > 4:
         log_msg(
             f"Files unzipped to {dir_} is a image collection, will not go to next level",
             log_level=3,

@@ -16,7 +16,7 @@ def log_msg(message, log_level=3):
         time_message += " " + message
 
         if settings["log_to_file"]:
-            with open(settings["log_file_name"], "a") as f:
+            with open(settings["log_file_name"], "a", encoding="utf-8") as f:
                 f.write(time_message + "\n")
         else:
             print(time_message)
