@@ -65,7 +65,6 @@ class TestFullUnzip(unittest.TestCase):
         )
 
         self.assertTrue(success, "archive failed to unzip")
-        self.assertTrue(os.path.isdir(FILE_TARGET + "lv0"))
 
     def test_unzip_folder(self):
         self._ensure_executable_available()

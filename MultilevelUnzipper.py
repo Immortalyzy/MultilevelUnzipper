@@ -1,15 +1,54 @@
 """Main function of the program."""
 
 import os
+import shutil
 import sys
 
 from tqdm import tqdm
 
+from last_level import check_if_is_last_level
 from setting import Config
 from log_msg import log_msg
 from unzipper import get_password_list, move_files_up, unzipFileWith7z
 
 settings = Config.get_instance().settings
+
+
+def _list_files(dir_path, recursive):
+    if recursive:
+        files = []
+        for root, _, filenames in os.walk(dir_path):
+            for filename in filenames:
+                files.append(os.path.join(root, filename))
+        return files
+    return [
+        os.path.join(dir_path, filename)
+        for filename in os.listdir(dir_path)
+        if os.path.isfile(os.path.join(dir_path, filename))
+    ]
+
+
+def _move_single_file_to_root(output_dir, root_dir):
+    entries = os.listdir(output_dir)
+    files = [name for name in entries if os.path.isfile(os.path.join(output_dir, name))]
+    dirs = [name for name in entries if os.path.isdir(os.path.join(output_dir, name))]
+
+    if len(files) != 1 or dirs:
+        return None
+
+    src = os.path.join(output_dir, files[0])
+    dest = os.path.join(root_dir, files[0])
+    if os.path.exists(dest):
+        log_msg(
+            f"Destination {dest} already exists; keeping {src} in {output_dir}",
+            log_level=4,
+        )
+        return None
+
+    shutil.move(src, dest)
+    os.rmdir(output_dir)
+    log_msg(f"Moved single extracted file {src} to {dest}", log_level=3)
+    return dest
 
 
 ################### MAIN FUNCTION ################################################################
@@ -50,80 +89,90 @@ def main(target):
     ##################################### start unzipping ##########################################
     # if target is a directory
     if os.path.isdir(target):
-        if settings["unzipsubfolder"]:
-            # unzip all files including files under subfolders
-            for root, dirs, files in os.walk(target):
-                for file in tqdm(files):
-                    # it is possible that a part of the multi-part archive is deleted and no longer exists
-                    # in this case, the file will be skipped
-                    if not os.path.exists(os.path.join(root, file)):
-                        log_msg(f"-- {file} does not exist (deleted after unzipping the main part).", log_level=5)
-                        continue
-                    finished_files_size += os.path.getsize(os.path.join(root, file)) / 1024 / 1024
-                    success, lv = unzipFileWith7z(
-                        os.path.join(root, file),
-                        zip_executable_path,
-                        passwords=passwords,
-                        autodelete=settings["autodelete"],
-                        autodeleteexisting=settings["autodeleteexisting"],
-                        maximum_lv=settings["maximum_lv"],
-                        use_bandizip=settings["use_bandizip"],
-                        pass_in_file_separator=settings["pass_in_file_separator"],
+        level = 0
+        processed = set()
+        files_to_process = _list_files(target, settings["unzipsubfolder"])
+
+        while files_to_process:
+            if level > settings["maximum_lv"]:
+                break
+
+            next_files = []
+            seen = set()
+            level_files = []
+            for file_path in files_to_process:
+                if file_path not in seen:
+                    seen.add(file_path)
+                    level_files.append(file_path)
+
+            for file_path in tqdm(level_files):
+                # it is possible that a part of the multi-part archive is deleted and no longer exists
+                # in this case, the file will be skipped
+                if not os.path.exists(file_path):
+                    log_msg(
+                        f"-- {os.path.basename(file_path)} does not exist "
+                        "(deleted after unzipping the main part).",
+                        log_level=5,
                     )
-                    finished_files += 1
-                    if success:
-                        log_msg(
-                            f"vv Archive {file} has been unzipped to {file}lv{0:d}",
-                            log_level=5,
-                        )
-                        succeeded += 1
-                    else:
-                        log_msg(f"-- {file} cannot be unzipped.", log_level=5)
-                        failed += 1
+                    continue
 
-            if settings["automoveup"]:
-                dirs = os.listdir(target)
-                for dir_ in dirs:
-                    # if dir is a directory, it could just unzipped from a file
-                    #! it can also be a directory existing before the program runs
-                    if os.path.isdir(os.path.join(target, dir_)):
-                        move_files_up(os.path.join(target, dir_))
-        else:
-            # unzip all files in the target directory, but not including files under subfolders
-            # get all items in the target directory
-            list_of_files = os.listdir(target)
-            # create a list of files (not directories)
-            list_of_files = [file for file in list_of_files if os.path.isfile(os.path.join(target, file))]
+                if file_path in processed:
+                    continue
 
-            for file in tqdm(list_of_files):
-                finished_files_size += os.path.getsize(os.path.join(target, file)) / 1024 / 1024
-                success, lv = unzipFileWith7z(
-                    os.path.join(target, file),
+                finished_files_size += os.path.getsize(file_path) / 1024 / 1024
+                success, _ = unzipFileWith7z(
+                    file_path,
                     zip_executable_path,
                     passwords=passwords,
                     autodelete=settings["autodelete"],
                     autodeleteexisting=settings["autodeleteexisting"],
-                    maximum_lv=settings["maximum_lv"],
+                    lv=level,
+                    maximum_lv=level,
                     use_bandizip=settings["use_bandizip"],
                     pass_in_file_separator=settings["pass_in_file_separator"],
                 )
+                processed.add(file_path)
                 finished_files += 1
                 if success:
                     log_msg(
-                        f"vv Archive {file} has been unzipped to {file}lv{0:d}",
+                        f"vv Archive {os.path.basename(file_path)} has been unzipped "
+                        f"to {file_path}lv{level:d}",
                         log_level=5,
                     )
                     succeeded += 1
                 else:
-                    log_msg(f"-- {file} cannot be unzipped.", log_level=5)
+                    log_msg(
+                        f"-- {os.path.basename(file_path)} cannot be unzipped.",
+                        log_level=5,
+                    )
                     failed += 1
+                    continue
 
-            if settings["automoveup"]:
-                for file in list_of_files:
-                    dir_ = os.path.join(target, file + "lv0")
-                    # move up only the list of files just unzipped
-                    if os.path.isdir(dir_):
-                        move_files_up(dir_)
+                output_dir = f"{file_path}lv{level:d}"
+                if not os.path.isdir(output_dir):
+                    continue
+
+                if check_if_is_last_level(output_dir):
+                    continue
+
+                moved_file = _move_single_file_to_root(
+                    output_dir, os.path.dirname(file_path)
+                )
+                if moved_file:
+                    next_files.append(moved_file)
+                    continue
+
+                next_files.extend(_list_files(output_dir, True))
+
+            level += 1
+            if level > settings["maximum_lv"]:
+                break
+            files_to_process = next_files
+
+        if settings["automoveup"]:
+            for dir_ in os.listdir(target):
+                if os.path.isdir(os.path.join(target, dir_)):
+                    move_files_up(os.path.join(target, dir_))
 
     # if target is a file
     if os.path.isfile(target):
