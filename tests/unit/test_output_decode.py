@@ -41,6 +41,24 @@ class TestOutputDecode(unittest.TestCase):
         )
         self.assertTrue(is_wrong_password(result))
 
+    def test_is_wrong_password_7zip_prompt_without_stdin(self):
+        result = CompletedProcess(
+            args=["7z.exe"],
+            returncode=255,
+            stdout=b"Enter password (will not be echoed):",
+            stderr=b"Break signaled",
+        )
+        self.assertTrue(is_wrong_password(result))
+
+    def test_is_wrong_password_bandizip_password_needed(self):
+        result = CompletedProcess(
+            args=["bz.exe"],
+            returncode=2,
+            stdout=b"Error - hello.txt (0xa0000020: Password is needed)",
+            stderr=b"",
+        )
+        self.assertTrue(is_wrong_password(result))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,5 @@
+2026-03-21 22:25:03 ----- test/火影2016p.EP195_1.rar is not a file or a directory
+2026-03-21 22:35:43 ----- passwords.txt not found
+2026-03-21 22:35:43 --- Found 5 passwords in local files
+2026-03-21 22:35:43 ---- Found 46 passwords in total
+2026-03-21 22:35:43 --- Correct password for D:\Work\MultilevelUnzipper\test\23.01.zip is yejiang, unzipped with 7-Zip to D:\Work\MultilevelUnzipper\test\23.01.ziplv0

@@ -6,6 +6,7 @@ import sys
 
 from tqdm import tqdm
 
+from archive_backends import clear_archive_probe_cache
 from last_level import check_if_is_last_level
 from setting import Config
 from log_msg import log_msg
@@ -55,6 +56,7 @@ def _move_single_file_to_root(output_dir, root_dir):
 def main(target):
     """main function, can take both a file or a directory as argument"""
     # load settings
+    clear_archive_probe_cache()
 
     # print the settings
     print("Settings:")

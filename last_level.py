@@ -1,7 +1,9 @@
-"""This module contains functions used to check if a directory is the last level of a zip file"""
+"""Helpers for deciding whether an extracted directory is terminal output."""
 
 import mimetypes
 import os
+
+from archive_backends import probe_archive_with_backends
 from log_msg import log_msg
 
 
@@ -10,7 +12,6 @@ def check_if_is_program(dir_):
     if not os.path.isdir(dir_):
         return False
 
-    # criteria 1 : files just extracted contains at the same time .dll and .exe files
     contains_dll = False
     contains_exe = False
     for root, dirs, files in os.walk(dir_):
@@ -20,7 +21,6 @@ def check_if_is_program(dir_):
             if file_.endswith(".exe"):
                 contains_exe = True
 
-    # criteria 2 : files just extracted contains at the same time .exe files and folders
     contains_folder = False
     if any(os.path.isdir(os.path.join(dir_, item)) for item in os.listdir(dir_)):
         contains_folder = True
@@ -31,15 +31,14 @@ def check_if_is_program(dir_):
             log_level=3,
         )
         return True
-    else:
-        return False
+    return False
 
 
 def check_if_is_image_collection(dir_):
     """check if the directory is a image collection directory, return True if yes, otherwise return False"""
-    # if a directory contains more than 2 image files return true
     if not os.path.isdir(dir_):
         return False
+
     image_extensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".tif"]
     image_count = 0
     for root, dirs, files in os.walk(dir_):
@@ -55,16 +54,28 @@ def check_if_is_image_collection(dir_):
     return False
 
 
+def _is_video_like_file(file_name):
+    mimetype, encoding = mimetypes.guess_type(file_name)
+    return bool(mimetype and mimetype.startswith("video"))
+
+
 def check_if_is_video_or_video_collection(dir_):
-    """check if the directory is a video or video collection directory, return True if yes, otherwise return False"""
-    # sometimes there is only one video
-    # checking of the file can only be done with the file extension
+    """Return True when the directory only contains terminal video-like output."""
     has_video_file = False
     for root, dirs, files in os.walk(dir_):
         for file_ in files:
-            mimetype, encoding = mimetypes.guess_type(file_)
-            if mimetype and mimetype.startswith("video"):
-                has_video_file = True
+            if not _is_video_like_file(file_):
+                continue
+
+            has_video_file = True
+            file_path = os.path.join(root, file_)
+            if probe_archive_with_backends(file_path):
+                log_msg(
+                    f"Media-like file {file_path} can still be opened as an archive; "
+                    "continuing recursion.",
+                    log_level=3,
+                )
+                return False
     return has_video_file
 
 
